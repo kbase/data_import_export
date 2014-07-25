@@ -1,0 +1,73 @@
+<project name="Genbank genome uploader" default="compile" basedir=".">
+
+  <description>
+      Build jar-file for genome uploader in genbank format
+  </description>
+
+  <!-- set global properties for this build -->
+  <property name="src" location="src"/>
+  <property name="dist" location="dist"/>
+  <property name="classes" location="classes"/>
+  <property name="jar.file" value="KBaseDataImportExport.jar"/>
+  <property name="jar2.file" value="GenbankUploader.jar"/>
+
+  <property name="jarsdir" value="../jars/lib/jars"/>
+
+  <fileset dir="${jarsdir}" id="lib">
+    <include name="apache_commons/commons-codec-1.8.jar"/>
+    <include name="apache_commons/commons-io-2.4.jar"/>
+    <include name="jackson/jackson-annotations-2.2.3.jar"/>
+    <include name="jackson/jackson-core-2.2.3.jar"/>
+    <include name="jackson/jackson-databind-2.2.3.jar"/>
+    <include name="google/guava-14.0.1.jar"/>
+    <include name="kbase/genomes/kbase-genomes-20140411.jar"/>
+    <include name="kbase/auth/kbase-auth-1398468950-3552bb2.jar"/>
+    <include name="kbase/genomes/kbase-genomes-20140411.jar"/>
+    <include name="kbase/common/kbase-common-0.0.3.jar"/>
+    <include name="kbase/workspace/WorkspaceClient-0.2.0.jar"/>
+    <include name="kbase/workspace/WorkspaceService-0.2.0.jar"/>
+    <include name="kbase/kidl/kbase-kidl-parser2.jar"/>
+    <include name="junit/junit-4.9.jar"/>
+  </fileset>
+
+  <path id="compile.classpath">
+    <fileset refid="lib"/>
+  </path>
+
+  <target name="init" description="make directories">
+    <!-- Create the output directory structure-->
+    <mkdir dir="${classes}"/>
+    <mkdir dir="${dist}"/>
+  </target>
+
+  <target name="compile" depends="init" description="compile the source">
+    <!-- Compile class files-->
+    <javac destdir="${classes}" includeantruntime="false" target="1.7" source="1.7" debug="true" classpathref="compile.classpath">
+      <src path="${src}"/>
+    </javac>
+    <!-- Copy resource files-->
+    <copy todir="${classes}">
+      <fileset dir="${src}">
+      </fileset>
+    </copy>
+    <jar destfile="${dist}/${jar.file}" basedir="${classes}"/>
+    <!-- -->
+    <unzip dest="${classes}">
+        <fileset refid="lib"/>
+    </unzip>
+    <jar destfile="${dist}/${jar2.file}" basedir="${classes}">
+      <manifest>
+        <attribute name="Main-Class" value="us.kbase.genbank.test.GbkUploaderTester"/>
+      </manifest>
+    </jar>
+    <!-- -->
+    <delete dir="${classes}"/>
+  </target>
+
+  <target name="clean" description="clean up" >
+    <!-- Clean up internal temporary files and folders-->
+    <delete dir="${classes}"/>
+    <delete dir="${dist}"/>
+  </target>
+</project>
+
