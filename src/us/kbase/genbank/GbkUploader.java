@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -13,6 +14,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import us.kbase.auth.AuthToken;
+import us.kbase.common.service.Tuple11;
 import us.kbase.common.service.Tuple3;
 import us.kbase.common.service.Tuple4;
 import us.kbase.common.service.UObject;
@@ -20,12 +23,34 @@ import us.kbase.kbasegenomes.Contig;
 import us.kbase.kbasegenomes.ContigSet;
 import us.kbase.kbasegenomes.Feature;
 import us.kbase.kbasegenomes.Genome;
+import us.kbase.workspace.ObjectData;
+import us.kbase.workspace.ObjectIdentity;
 import us.kbase.workspace.ObjectSaveData;
 import us.kbase.workspace.SaveObjectsParams;
+import us.kbase.workspace.WorkspaceClient;
 
 public class GbkUploader {
+
+	public static void uploadGbk(List<File> files, String wsUrl, String id, String token) throws Exception {
+		final WorkspaceClient wc = new WorkspaceClient(new URL(wsUrl), new AuthToken(token));
+		uploadGbk(files, new ObjectStorage() {
+			
+			@Override
+			public List<Tuple11<Long, String, String, String, Long, String, Long, String, String, Long, Map<String, String>>> saveObjects(
+					String authToken, SaveObjectsParams params) throws Exception {
+				return wc.saveObjects(params);
+			}
+			
+			@Override
+			public List<ObjectData> getObjects(String authToken,
+					List<ObjectIdentity> objectIds) throws Exception {
+				return wc.getObjects(objectIds);
+			}
+		}, wsUrl, id, token, null);
+	}
 	
-	public static void uploadGbk(List<File> files, ObjectStorage wc, String ws, String id, String token) throws Exception {
+	public static void uploadGbk(List<File> files, ObjectStorage wc, String ws, String id, String token, 
+			Map<String, List<String>> genomeNameToPaths) throws Exception {
 		final Map<String, Contig> contigMap = new LinkedHashMap<String, Contig>();
 		final Genome genome = new Genome()
 				.withComplete(1L).withDomain("Bacteria").withGeneticCode(11L).withId(id)
@@ -143,6 +168,7 @@ public class GbkUploader {
 			}
 		}
 		// Process all non-plasmids first
+		boolean nameProblems = false;
 		for (String key : contigToOrgName.keySet()) {
 			Boolean isPlasmid = contigToPlasmid.get(key);
 			if (isPlasmid != null && isPlasmid)
@@ -150,9 +176,11 @@ public class GbkUploader {
 			genome.setScientificName(contigToOrgName.get(key));
 			String taxonomy = contigToTaxonomy.get(key);
 			if (taxonomy != null) {
-				if (genome.getTaxonomy() != null && !genome.getTaxonomy().equals(taxonomy))
+				if (genome.getTaxonomy() != null && !genome.getTaxonomy().equals(taxonomy)) {
 					System.err.println("Taxonomy path is wrong in file [" + files.get(0).getParent() + ":" + 
 							key + "]: " + taxonomy + " (it's different from '" + genome.getTaxonomy() + "')");
+					nameProblems = true;
+				}
 				genome.withTaxonomy(taxonomy);
 			}
 		}
@@ -172,6 +200,12 @@ public class GbkUploader {
 		}
 		System.out.println("    name: " + genome.getScientificName());
 		System.out.println("    tax:  " + genome.getTaxonomy());
+		if (!nameProblems) {
+			List<String> paths = new ArrayList<String>();
+			for (File f : files)
+				paths.add(f.getParentFile().getName() + "/" + f.getName());
+			genomeNameToPaths.put(genome.getScientificName(), paths);
+		}
 		String contigId = id + ".contigset";
 		List<Long> contigLengths = new ArrayList<Long>();
 		long dnaLen = 0;

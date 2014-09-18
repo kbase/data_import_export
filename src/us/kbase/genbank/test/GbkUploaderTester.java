@@ -11,6 +11,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import us.kbase.auth.AuthToken;
 import us.kbase.common.service.Tuple11;
@@ -49,6 +52,8 @@ public class GbkUploaderTester {
 
 		final TypedObjectValidator validator = new TypedObjectValidator(db);
 		
+		Map<String, List<String>> genomeNameToPaths = new TreeMap<String, List<String>>();
+		
 		parseAllInDir(new int[] {1}, new File("."), new ObjectStorage() {
 			@Override
 			public List<Tuple11<Long, String, String, String, Long, String, Long, String, String, Long, Map<String, String>>> saveObjects(
@@ -62,7 +67,8 @@ public class GbkUploaderTester {
 					List<ObjectIdentity> objectIds) throws Exception {
 				throw new IllegalStateException("Unsupported method");
 			}
-		});
+		}, genomeNameToPaths);
+		new ObjectMapper().writeValue(new File("genome2ftp.json"), genomeNameToPaths);
 	}
 
 	private static void validateObject(TypedObjectValidator validator, String objName, UObject obj, String type) throws Exception {
@@ -75,24 +81,24 @@ public class GbkUploaderTester {
 			throw new IllegalStateException("["+objName+"] does not validate");
 	}
 	
-	public static void parseAllInDir(int[] pos, File dir, ObjectStorage wc) throws Exception {
+	public static void parseAllInDir(int[] pos, File dir, ObjectStorage wc, Map<String, List<String>> genomeNameToPaths) throws Exception {
 		List<File> files = new ArrayList<File>();
 		for (File f : dir.listFiles()) {
 			if (f.isDirectory()) {
-				parseAllInDir(pos, f, wc);
+				parseAllInDir(pos, f, wc, genomeNameToPaths);
 			} else if (f.getName().endsWith(".gbk")) {
 				files.add(f);
 			}
 		}
 		if (files.size() > 0)
-			parseGenome(pos, dir, files, wc);
+			parseGenome(pos, dir, files, wc, genomeNameToPaths);
 
 	}
 	
-	public static void parseGenome(int[] pos, File dir, List<File> gbkFiles, ObjectStorage wc) throws Exception {
+	public static void parseGenome(int[] pos, File dir, List<File> gbkFiles, ObjectStorage wc, Map<String, List<String>> genomeNameToPaths) throws Exception {
 		System.out.println("[" + (pos[0]++) + "] " + dir.getName());
 		long time = System.currentTimeMillis();
-		GbkUploader.uploadGbk(gbkFiles, wc, "", dir.getName(), "");
+		GbkUploader.uploadGbk(gbkFiles, wc, "", dir.getName(), "", genomeNameToPaths);
 		System.out.println("    time: " + (System.currentTimeMillis() - time) + " ms");
 	}
 
