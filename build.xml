@@ -25,11 +25,14 @@
     <include name="kbase/genomes/kbase-genomes-20140411.jar"/>
     <include name="kbase/auth/kbase-auth-1398468950-3552bb2.jar"/>
     <include name="kbase/genomes/kbase-genomes-20140411.jar"/>
-    <include name="kbase/common/kbase-common-0.0.3.jar"/>
+    <include name="kbase/common/kbase-common-0.0.6.jar"/>
     <include name="kbase/workspace/WorkspaceClient-0.2.0.jar"/>
     <include name="kbase/workspace/WorkspaceService-0.2.0.jar"/>
     <include name="kbase/kidl/kbase-kidl-parser2.jar"/>
-    <include name="junit/junit-4.9.jar"/>
+    <include name="servlet/servlet-api-2.5.jar"/>
+	<include name="ini4j/ini4j-0.5.2.jar"/>
+<include name="apache_commons/commons-fileupload-1.2.2.jar"/>
+<include name="jetty/jetty-all-7.0.0.jar"/>
   </fileset>
 
   <path id="compile.classpath">
@@ -60,10 +63,12 @@
     <!-- make the war file for the server-->
     <mkdir dir="${war.dir}/lib"/>
     <copy todir="${war.dir}/lib/" flatten="true">
-      <union refid="lib"/>
+      <fileset refid="lib"/>
+      <resources>
+        <file file="${dist}/${jar.file}"/>
+      </resources>
     </copy>
     <war destfile="${dist}/${war.file}" webxml="${war.dir}/web.xml">
-      <classes dir="${classes}"/>
       <lib dir="${war.dir}/lib/"/>
     </war>
     <delete dir="${war.dir}/lib"/>

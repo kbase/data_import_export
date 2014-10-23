@@ -106,11 +106,11 @@ deploy: deploy-client deploy-service
 deploy-client: deploy-client-libs deploy-docs deploy-scripts
 
 deploy-client-libs:
-	mkdir -p $(TARGET)/lib/
-	cp dist/client/$(CLIENT_JAR) $(TARGET)/lib/
-	cp -rv lib/* $(TARGET)/lib/
-	echo $(GITCOMMIT) > $(TARGET)/lib/$(SERVICE).clientdist
-	echo $(TAGS) >> $(TARGET)/lib/$(SERVICE).clientdist
+#	mkdir -p $(TARGET)/lib/
+#	cp dist/client/$(CLIENT_JAR) $(TARGET)/lib/
+#	cp -rv lib/* $(TARGET)/lib/
+#	echo $(GITCOMMIT) > $(TARGET)/lib/$(SERVICE).clientdist
+#	echo $(TAGS) >> $(TARGET)/lib/$(SERVICE).clientdist
 
 deploy-docs:
 	mkdir -p $(SERVICE_DIR)/webroot
