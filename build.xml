@@ -8,10 +8,12 @@
   <property name="src" location="src"/>
   <property name="dist" location="dist"/>
   <property name="classes" location="classes"/>
-  <property name="jar.file" value="KBaseDataImportExport.jar"/>
-  <property name="jar2.file" value="GenbankUploader.jar"/>
-
+  <property name="jar.file" value="KBaseDataImport.jar"/>
   <property name="jarsdir" value="../jars/lib/jars"/>
+  <property name="doc" location="docs/javadoc"/>
+  <property name="tempunpack" location="unpackedjars"/>
+  <property name="war.file" value="KBaseDataImport.war"/>
+  <property name="war.dir" value="war"/>
 
   <fileset dir="${jarsdir}" id="lib">
     <include name="apache_commons/commons-codec-1.8.jar"/>
@@ -51,17 +53,37 @@
       </fileset>
     </copy>
     <jar destfile="${dist}/${jar.file}" basedir="${classes}"/>
-    <!-- -->
-    <unzip dest="${classes}">
-        <fileset refid="lib"/>
-    </unzip>
-    <jar destfile="${dist}/${jar2.file}" basedir="${classes}">
-      <manifest>
-        <attribute name="Main-Class" value="us.kbase.genbank.test.GbkUploaderTester"/>
-      </manifest>
-    </jar>
-    <!-- -->
     <delete dir="${classes}"/>
+  </target>
+
+  <target name="buildwar" description="build the WAR file. Assumes compile has been run">
+    <!-- make the war file for the server-->
+    <mkdir dir="${war.dir}/lib"/>
+    <copy todir="${war.dir}/lib/" flatten="true">
+      <union refid="lib"/>
+    </copy>
+    <war destfile="${dist}/${war.file}" webxml="${war.dir}/web.xml">
+      <classes dir="${classes}"/>
+      <lib dir="${war.dir}/lib/"/>
+    </war>
+    <delete dir="${war.dir}/lib"/>
+  </target>
+
+  <target name="javadoc" description="build javadocs">
+    <unzip dest="${tempunpack}">
+      <fileset refid="lib"/>
+    </unzip>
+    <javadoc access="protected" author="false" classpathref="compile.classpath"
+      destdir="${doc}" nodeprecated="false" nodeprecatedlist="false"
+      noindex="false" nonavbar="false" notree="false"
+      source="1.7" splitindex="true" use="true" version="true">
+      <link href="http://download.oracle.com/javase/7/docs/api/"/>
+      <link href="http://fasterxml.github.io/jackson-core/javadoc/2.2.0/"/>
+      <link href="http://fasterxml.github.io/jackson-databind/javadoc/2.2.0/"/>
+      <fileset refid="client-jdoc-files"/>
+      <fileset refid="sources-jdoc-files"/>
+    </javadoc>
+    <delete dir="${tempunpack}"/>
   </target>
 
   <target name="clean" description="clean up" >

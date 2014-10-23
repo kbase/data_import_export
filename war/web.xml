@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app>
+    <servlet>
+        <servlet-name>JsonRpcServlet</servlet-name>
+        <servlet-class>us.kbase.kbasedataimport.KBaseDataImportServer</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>ContigSetUploadServlet</servlet-name>
+        <servlet-class>us.kbase.kbasedataimport.ContigSetUploadServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>JsonRpcServlet</servlet-name>
+        <url-pattern>/jsonrpc</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>ContigSetUploadServlet</servlet-name>
+        <url-pattern>/uploader</url-pattern>
+    </servlet-mapping>
+</web-app>

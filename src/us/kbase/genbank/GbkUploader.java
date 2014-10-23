@@ -31,8 +31,9 @@ import us.kbase.workspace.WorkspaceClient;
 
 public class GbkUploader {
 
-	public static void uploadGbk(List<File> files, String wsUrl, String id, String token) throws Exception {
+	public static void uploadGbk(List<File> files, String wsUrl, String wsName, String id, String token) throws Exception {
 		final WorkspaceClient wc = new WorkspaceClient(new URL(wsUrl), new AuthToken(token));
+		wc.setAuthAllowedForHttp(true);
 		uploadGbk(files, new ObjectStorage() {
 			
 			@Override
@@ -46,7 +47,7 @@ public class GbkUploader {
 					List<ObjectIdentity> objectIds) throws Exception {
 				return wc.getObjects(objectIds);
 			}
-		}, wsUrl, id, token, null);
+		}, wsName, id, token, null);
 	}
 	
 	public static void uploadGbk(List<File> files, ObjectStorage wc, String ws, String id, String token, 
@@ -198,9 +199,7 @@ public class GbkUploader {
 		if (contigMap.size() == 0) {
 			throw new Exception("GBK-file has no DNA-sequence");
 		}
-		System.out.println("    name: " + genome.getScientificName());
-		System.out.println("    tax:  " + genome.getTaxonomy());
-		if (!nameProblems) {
+		if (genomeNameToPaths != null && !nameProblems) {
 			List<String> paths = new ArrayList<String>();
 			for (File f : files)
 				paths.add(f.getParentFile().getName() + "/" + f.getName());
