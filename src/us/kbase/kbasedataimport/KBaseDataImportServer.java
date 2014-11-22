@@ -1,12 +1,17 @@
 package us.kbase.kbasedataimport;
 
 import java.util.List;
+import java.util.Map;
 import us.kbase.auth.AuthToken;
 import us.kbase.common.service.JsonServerMethod;
 import us.kbase.common.service.JsonServerServlet;
+import us.kbase.common.service.Tuple2;
+import us.kbase.shock.client.BasicShockClient;
+import us.kbase.shock.client.ShockNodeId;
 
 //BEGIN_HEADER
 import java.io.File;
+import java.net.URL;
 import java.util.Map;
 
 import org.ini4j.Ini;
@@ -130,6 +135,35 @@ public class KBaseDataImportServer extends JsonServerServlet {
         config();
     	ContigSetUploadServlet.importNcbiGenome(input.getGenomeName(), input.getOutGenomeWs(), input.getOutGenomeId(), authPart.toString());
         //END import_ncbi_genome
+    }
+
+    /**
+     * <p>Original spec-file function name: upload</p>
+     * <pre>
+     * </pre>
+     * @param   input   instance of String
+     * @param   output   instance of String
+     * @param   workspace   instance of String
+     * @param   objectName   instance of String
+     * @param   props   instance of mapping from String to String
+     * @return   parameter "job_ids" of tuple of size 2: String, String
+     */
+    @JsonServerMethod(rpc = "KBaseDataImport.upload")
+    public Tuple2<String, String> upload(String input, String output, String workspace, String objectName, Map<String,String> props, AuthToken authPart) throws Exception {
+        Tuple2<String, String> returnVal = null;
+        //BEGIN upload
+        System.out.println("Server call: input=" + input + ", output=" + output + ", ws=" + workspace + ", obj=" + objectName + ", props=" + props);
+        String shockNodeId = props.get("shock_node_id");
+        String ftpPath = props.get("ftp_path");
+        if (shockNodeId != null && !shockNodeId.isEmpty()) {
+    		BasicShockClient client = new BasicShockClient(new URL("https://kbase.us/services/shock-api/"), authPart);
+    		client.deleteNode(new ShockNodeId(shockNodeId));
+        } else if (ftpPath != null) {
+        	ContigSetUploadServlet.importNcbiGenomeFromFtp(ftpPath, workspace, objectName, authPart.toString());
+        }
+        returnVal = new Tuple2<String, String>().withE1("jobId1").withE2("jobId2");
+        //END upload
+        return returnVal;
     }
 
     public static void main(String[] args) throws Exception {

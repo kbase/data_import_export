@@ -3,13 +3,14 @@ package us.kbase.kbasedataimport;
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.File;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import us.kbase.auth.AuthToken;
 import us.kbase.common.service.JsonClientCaller;
 import us.kbase.common.service.JsonClientException;
+import us.kbase.common.service.Tuple2;
 import us.kbase.common.service.UnauthorizedException;
 
 /**
@@ -19,19 +20,6 @@ import us.kbase.common.service.UnauthorizedException;
  */
 public class KBaseDataImportClient {
     private JsonClientCaller caller;
-    private static URL DEFAULT_URL = null;
-    static {
-        try {
-            DEFAULT_URL = new URL("https://kbase.us/services/kbase_data_import/rpc");
-        } catch (MalformedURLException mue) {
-            throw new RuntimeException("Compile error in client - bad url compiled");
-        }
-    }
-
-    /** Constructs a client with the default url and no user credentials.*/
-    public KBaseDataImportClient() {
-       caller = new JsonClientCaller(DEFAULT_URL);
-    }
 
 
     /** Constructs a client with a custom URL and no user credentials.
@@ -61,27 +49,6 @@ public class KBaseDataImportClient {
      */
     public KBaseDataImportClient(URL url, String user, String password) throws UnauthorizedException, IOException {
         caller = new JsonClientCaller(url, user, password);
-    }
-
-    /** Constructs a client with the default URL.
-     * @param token the user's authorization token.
-     * @throws UnauthorizedException if the token is not valid.
-     * @throws IOException if an IOException occurs when checking the token's
-     * validity.
-     */
-    public KBaseDataImportClient(AuthToken token) throws UnauthorizedException, IOException {
-        caller = new JsonClientCaller(DEFAULT_URL, token);
-    }
-
-    /** Constructs a client with the default URL.
-     * @param user the user name.
-     * @param password the password for the user name.
-     * @throws UnauthorizedException if the credentials are not valid.
-     * @throws IOException if an IOException occurs when checking the user's
-     * credentials.
-     */
-    public KBaseDataImportClient(String user, String password) throws UnauthorizedException, IOException {
-        caller = new JsonClientCaller(DEFAULT_URL, user, password);
     }
 
     /** Get the URL of the service with which this client communicates.
@@ -202,5 +169,30 @@ public class KBaseDataImportClient {
         args.add(input);
         TypeReference<Object> retType = new TypeReference<Object>() {};
         caller.jsonrpcCall("KBaseDataImport.import_ncbi_genome", args, retType, false, true);
+    }
+
+    /**
+     * <p>Original spec-file function name: upload</p>
+     * <pre>
+     * </pre>
+     * @param   input   instance of String
+     * @param   output   instance of String
+     * @param   workspace   instance of String
+     * @param   objectName   instance of String
+     * @param   props   instance of mapping from String to String
+     * @return   parameter "job_ids" of tuple of size 2: String, String
+     * @throws IOException if an IO exception occurs
+     * @throws JsonClientException if a JSON RPC exception occurs
+     */
+    public Tuple2<String, String> upload(String input, String output, String workspace, String objectName, Map<String,String> props) throws IOException, JsonClientException {
+        List<Object> args = new ArrayList<Object>();
+        args.add(input);
+        args.add(output);
+        args.add(workspace);
+        args.add(objectName);
+        args.add(props);
+        TypeReference<List<Tuple2<String, String>>> retType = new TypeReference<List<Tuple2<String, String>>>() {};
+        List<Tuple2<String, String>> res = caller.jsonrpcCall("KBaseDataImport.upload", args, retType, true, true);
+        return res.get(0);
     }
 }

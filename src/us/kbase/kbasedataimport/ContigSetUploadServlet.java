@@ -1,5 +1,6 @@
 package us.kbase.kbasedataimport;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -25,6 +26,8 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
+import org.apache.commons.net.ftp.FTPClient;
+import org.apache.commons.net.ftp.FTPFile;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
@@ -231,7 +234,57 @@ public class ContigSetUploadServlet extends HttpServlet {
 	    			f.delete();
 	    }
 	}
-	
+
+	public static void importNcbiGenomeFromFtp(String ftpPath, String ws, String id, String token) throws Exception {
+		List<String> paths = new ArrayList<String>();
+		if (ftpPath.startsWith("ftp://")) {
+			String relPath = ftpPath.substring(6);
+			String ftpHost = relPath.substring(0, relPath.indexOf('/'));
+			relPath = relPath.substring(relPath.indexOf('/'));
+			FTPClient client = new FTPClient();
+			client.connect(ftpHost);
+			client.enterLocalPassiveMode();
+	        client.login("anonymous", "");
+	        FTPFile[] files = client.listFiles(relPath);
+	        for (FTPFile file : files) {
+	        	System.out.println("File name: " + file.getName());
+	        	if (!file.isFile())
+	        		continue;
+	        	if (file.getName().contains("/") && file.getName().equals(relPath)) {
+	        		System.out.println(ftpPath);
+	        		paths.add(ftpPath);
+	        	} else {
+		        	if (!file.getName().endsWith(".gbk"))
+		        		continue;
+	        		String path = ftpPath;
+	        		if (!path.endsWith("/"))
+	        			path += "/";
+	        		path += file.getName();
+	        		System.out.println(path);
+	        		paths.add(path);
+	        	}
+	        }
+		}
+	    File dir = getTempDir();
+	    List<File> files = new ArrayList<File>();
+	    try {
+	    	for (String path : paths) {
+	    		InputStream is = new URL(path).openStream();
+	    		File tempFile = File.createTempFile("ncbi_", ".gbk", dir);
+	    		files.add(tempFile);
+	    		OutputStream os = new FileOutputStream(tempFile);
+	    		copy(is, os);
+	    		os.close();
+	    		is.close();
+	    	}
+			GbkUploader.uploadGbk(files, getWsUrl(), ws, id, token);
+	    } finally {
+	    	for (File f : files)
+	    		if (f.exists())
+	    			f.delete();
+	    }
+	}
+
     public static long copy(InputStream from, OutputStream to) throws IOException {
     	byte[] buf = new byte[10000];
     	long total = 0;
