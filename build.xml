@@ -1,4 +1,4 @@
-<project name="Genbank genome uploader" default="compile" basedir=".">
+<project name="KBase Data Import" default="compile" basedir=".">
 
   <description>
       Build jar-file for genome uploader in genbank format
@@ -27,12 +27,19 @@
     <include name="kbase/genomes/kbase-genomes-20140411.jar"/>
     <include name="kbase/common/kbase-common-0.0.6.jar"/>
     <include name="kbase/workspace/WorkspaceClient-0.2.0.jar"/>
-    <include name="kbase/workspace/WorkspaceService-0.2.0.jar"/>
     <include name="kbase/kidl/kbase-kidl-parser2.jar"/>
     <include name="servlet/servlet-api-2.5.jar"/>
-	<include name="ini4j/ini4j-0.5.2.jar"/>
-<include name="apache_commons/commons-fileupload-1.2.2.jar"/>
-<include name="jetty/jetty-all-7.0.0.jar"/>
+    <include name="ini4j/ini4j-0.5.2.jar"/>
+    <include name="apache_commons/commons-fileupload-1.2.2.jar"/>
+    <include name="jetty/jetty-all-7.0.0.jar"/>
+    <include name="syslog4j/syslog4j-0.9.46.jar"/>
+    <include name="jna/jna-3.4.0.jar"/>
+    <include name="kbase/shock/shock-client-0.0.7.jar"/>
+    <include name="apache_commons/http/httpclient-4.3.1.jar"/>
+    <include name="apache_commons/http/httpcore-4.3.jar"/>
+    <include name="apache_commons/http/httpmime-4.3.1.jar"/>
+    <include name="apache_commons/commons-logging-1.1.1.jar"/>
+    <include name="apache_commons/commons-net-3.3.jar"/>
   </fileset>
 
   <path id="compile.classpath">
@@ -59,7 +66,7 @@
     <delete dir="${classes}"/>
   </target>
 
-  <target name="buildwar" description="build the WAR file. Assumes compile has been run">
+  <target name="war" depends="compile" description="build the WAR file. Assumes compile has been run">
     <!-- make the war file for the server-->
     <mkdir dir="${war.dir}/lib"/>
     <copy todir="${war.dir}/lib/" flatten="true">
@@ -72,23 +79,6 @@
       <lib dir="${war.dir}/lib/"/>
     </war>
     <delete dir="${war.dir}/lib"/>
-  </target>
-
-  <target name="javadoc" description="build javadocs">
-    <unzip dest="${tempunpack}">
-      <fileset refid="lib"/>
-    </unzip>
-    <javadoc access="protected" author="false" classpathref="compile.classpath"
-      destdir="${doc}" nodeprecated="false" nodeprecatedlist="false"
-      noindex="false" nonavbar="false" notree="false"
-      source="1.7" splitindex="true" use="true" version="true">
-      <link href="http://download.oracle.com/javase/7/docs/api/"/>
-      <link href="http://fasterxml.github.io/jackson-core/javadoc/2.2.0/"/>
-      <link href="http://fasterxml.github.io/jackson-databind/javadoc/2.2.0/"/>
-      <fileset refid="client-jdoc-files"/>
-      <fileset refid="sources-jdoc-files"/>
-    </javadoc>
-    <delete dir="${tempunpack}"/>
   </target>
 
   <target name="clean" description="clean up" >

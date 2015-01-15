@@ -20,21 +20,21 @@ import us.kbase.common.service.Tuple11;
 import us.kbase.common.service.UObject;
 import us.kbase.genbank.GbkUploader;
 import us.kbase.genbank.ObjectStorage;
-import us.kbase.typedobj.core.TypeDefId;
-import us.kbase.typedobj.core.TypeDefName;
-import us.kbase.typedobj.core.TypedObjectValidationReport;
-import us.kbase.typedobj.core.TypedObjectValidator;
-import us.kbase.typedobj.db.FileTypeStorage;
-import us.kbase.typedobj.db.TypeDefinitionDB;
+//import us.kbase.typedobj.core.TypeDefId;
+//import us.kbase.typedobj.core.TypeDefName;
+//import us.kbase.typedobj.core.TypedObjectValidationReport;
+//import us.kbase.typedobj.core.TypedObjectValidator;
+//import us.kbase.typedobj.db.FileTypeStorage;
+//import us.kbase.typedobj.db.TypeDefinitionDB;
 import us.kbase.workspace.ObjectData;
 import us.kbase.workspace.ObjectIdentity;
 import us.kbase.workspace.SaveObjectsParams;
 import us.kbase.workspace.WorkspaceClient;
-import us.kbase.workspace.kbase.Util;
+//import us.kbase.workspace.kbase.Util;
 
 public class GbkUploaderTester {
 	
-	public static void main(String[] args) throws Exception {
+	/*public static void main(String[] args) throws Exception {
 		String spec = loadResourceFile(GbkUploaderTester.class.getResourceAsStream("KBaseGenomes.properties"));
 		File typedbDir = new File("typedb");
 		if (typedbDir.exists())
@@ -130,5 +130,5 @@ public class GbkUploaderTester {
 			for (File f : fileOrDir.listFiles()) 
 				deleteRecursively(f);
 		fileOrDir.delete();
-	}
+	}*/
 }

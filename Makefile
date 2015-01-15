@@ -1,162 +1,61 @@
-#port is now set in deploy.cfg
-SERVICE_PORT = $(shell perl server_scripts/get_deploy_cfg.pm KBaseDataImport.port)
-SERVICE = kbase_data_import
-SERVICE_CAPS = KBaseDataImport
-SPEC_FILE = KBaseDataImport.spec
-WAR = KBaseDataImport.war
-URL = https://kbase.us/services/kbase_data_import/rpc
-DEFAULT_SCRIPT_URL = $(URL)
-
-#End of user defined variables
-
-GITCOMMIT := $(shell git rev-parse --short HEAD)
-TAGS := $(shell git tag --contains $(GITCOMMIT))
-
-TOP_DIR = $(shell python -c "import os.path as p; print p.abspath('../..')")
-
-TOP_DIR_NAME = $(shell basename $(TOP_DIR))
-
-DIR = $(shell pwd)
-
-ifeq ($(TOP_DIR_NAME), dev_container)
-include $(TOP_DIR)/tools/Makefile.common
-endif
-
-DEPLOY_RUNTIME ?= /kb/runtime
-JAVA_HOME ?= $(DEPLOY_RUNTIME)/java
+KB_TOP ?= /kb/dev_container
+KB_RUNTIME ?= /kb/runtime
+DEPLOY_RUNTIME ?= $(KB_RUNTIME)
 TARGET ?= /kb/deployment
-SERVICE_DIR ?= $(TARGET)/services/$(SERVICE)
-GLASSFISH_HOME ?= $(DEPLOY_RUNTIME)/glassfish3
-SERVICE_USER ?= kbase
+CURR_DIR = $(shell pwd)
+SERVICE_NAME = $(shell basename $(CURR_DIR))
+SERVICE_DIR = $(TARGET)/services/$(SERVICE_NAME)
+LIB_JARS_DIR = $(KB_TOP)/modules/jars/lib/jars
+WAR_FILE = KBaseDataImport.war
 
-ASADMIN = $(GLASSFISH_HOME)/glassfish/bin/asadmin
+TARGET_PORT = 8200
+THREADPOOL_SIZE = 50
 
-ANT = ant
+default: compile
 
-# make sure our make test works
-.PHONY : test
+deploy-all: deploy
 
-default: build-bin build-docs
-
-# fake deploy-cfg target for when this is run outside the dev_container
-deploy-cfg:
-
-
-
-SCRIPTBINDESTINATION = $(DIR)/bin
-ifeq ($(TOP_DIR_NAME), dev_container)
-include $(TOP_DIR)/tools/Makefile.common.rules
-SCRIPTBINDESTINATION = $(TOP_DIR)/bin
-endif
-
-build-libs:
-	$(ANT) compile
-
-build-bin:
-	#rm -rf bin/lib
-	#$(ANT) bin
-	#echo "#!/bin/sh" > $(SCRIPTBINDESTINATION)/toc-convert
-	#echo "export JAVA_HOME=$(JAVA_HOME)" >> $(SCRIPTBINDESTINATION)/toc-convert
-	#echo "export PATH=\$$JAVA_HOME/bin:\$$PATH" >> $(SCRIPTBINDESTINATION)/toc-convert
-	#echo "java -jar $(DIR)/bin/toc-convert.jar \"\$$@\"" >> $(SCRIPTBINDESTINATION)/toc-convert
-	#chmod +x $(SCRIPTBINDESTINATION)/toc-convert
-
-build-docs: build-libs
-	mkdir -p docs
-	@#$(ANT) javadoc
-	pod2html --infile=lib/Bio/KBase/$(SERVICE_CAPS)/Client.pm --outfile=docs/$(SERVICE_CAPS).html
-	rm -f pod2htm?.tmp
-	cp $(SPEC_FILE) docs/.
-
-compile: compile-typespec compile-typespec-java
-
-compile-typespec-java:
-	gen_java_types -S -o . -u $(URL) $(SPEC_FILE)
-	rm -f lib/*.jar
-
-compile-typespec:
-	mkdir -p lib/biokbase/$(SERVICE)
-	touch lib/biokbase/__init__.py # do not include code in biokbase/__init__.py
-	touch lib/biokbase/$(SERVICE)/__init__.py 
-	mkdir -p lib/javascript/$(SERVICE)
-	compile_typespec \
-		--client Bio::KBase::$(SERVICE_CAPS)::Client \
-		--py biokbase.$(SERVICE).client \
-		--js javascript/$(SERVICE_CAPS)/Client \
-		--url $(URL) \
-		$(SPEC_FILE) lib
-	rm -f lib/*Server.p* #should be no perl/py server files in our lib dir
-	rm -f lib/*Impl.p*   #should be no perl/py impl files in our lib dir
-
+deploy: deploy-client deploy-service deploy-scripts deploy-docs
 
 test: test-client test-service test-scripts
 
-test-client: test-service
-	@# $(ANT) test_client_import
+test-client:
+	@echo "No tests for client"
 
 test-service:
-	test/cfg_to_runner.py $(TESTCFG)
-	test/run_tests.sh
+	@echo "No tests for service"
 
 test-scripts:
-	
+	@echo "No tests for scripts"
 
-deploy: deploy-client deploy-service
+compile: src
+	ant war
 
-deploy-client: deploy-client-libs deploy-docs deploy-scripts
+deploy-client:
+	@echo "No deployment for client"
 
-deploy-client-libs:
-#	mkdir -p $(TARGET)/lib/
-#	cp dist/client/$(CLIENT_JAR) $(TARGET)/lib/
-#	cp -rv lib/* $(TARGET)/lib/
-#	echo $(GITCOMMIT) > $(TARGET)/lib/$(SERVICE).clientdist
-#	echo $(TAGS) >> $(TARGET)/lib/$(SERVICE).clientdist
-
-deploy-docs:
-	mkdir -p $(SERVICE_DIR)/webroot
-	cp  -r docs/* $(SERVICE_DIR)/webroot/.
+deploy-service:
+	@echo "Service folder: $(SERVICE_DIR)"
+	mkdir -p $(SERVICE_DIR)
+	cp -f ./deploy.cfg $(SERVICE_DIR)
+	cp -f ./dist/$(WAR_FILE) $(SERVICE_DIR)
+	cp -f ./service/glassfish_start_service.sh $(SERVICE_DIR)
+	cp -f ./service/glassfish_stop_service.sh $(SERVICE_DIR)
+	echo 'if [ -z "$$KB_DEPLOYMENT_CONFIG" ]' > $(SERVICE_DIR)/start_service
+	echo 'then' >> $(SERVICE_DIR)/start_service
+	echo '    #export KB_DEPLOYMENT_CONFIG=$(SERVICE_DIR)/deploy.cfg' >> $(SERVICE_DIR)/start_service
+	echo '    export KB_DEPLOYMENT_CONFIG=$$KB_TOP/deployment.cfg' >> $(SERVICE_DIR)/start_service
+	echo 'fi' >> $(SERVICE_DIR)/start_service
+	echo "./glassfish_start_service.sh $(SERVICE_DIR)/$(WAR_FILE) $(TARGET_PORT) $(THREADPOOL_SIZE)" >> $(SERVICE_DIR)/start_service
+	chmod +x $(SERVICE_DIR)/start_service
+	echo "./glassfish_stop_service.sh $(TARGET_PORT)" > $(SERVICE_DIR)/stop_service
+	chmod +x $(SERVICE_DIR)/stop_service
 
 deploy-scripts:
-	#cp bin/
+	@echo "No deployment for scripts"
 
-deploy-service: deploy-service-libs deploy-service-scripts deploy-cfg
-
-deploy-service-libs:
-	$(ANT) buildwar
-	mkdir -p $(SERVICE_DIR)
-	cp dist/$(WAR) $(SERVICE_DIR)
-	echo $(GITCOMMIT) > $(SERVICE_DIR)/$(SERVICE).serverdist
-	echo $(TAGS) >> $(SERVICE_DIR)/$(SERVICE).serverdist
-
-deploy-service-scripts:
-	cp server_scripts/glassfish_administer_service.py $(SERVICE_DIR)
-	server_scripts/build_server_control_scripts.py $(SERVICE_DIR) $(WAR)\
-		$(TARGET) $(JAVA_HOME) deploy.cfg $(ASADMIN) $(SERVICE_CAPS)\
-		$(SERVICE_PORT)
-
-deploy-upstart:
-	echo "# $(SERVICE) service" > /etc/init/$(SERVICE).conf
-	echo "# NOTE: stop $(SERVICE) does not work" >> /etc/init/$(SERVICE).conf
-	echo "# Use the standard stop_service script as the $(SERVICE_USER) user" >> /etc/init/$(SERVICE).conf
-	echo "#" >> /etc/init/$(SERVICE).conf
-	echo "# Make sure to set up the $(SERVICE_USER) user account" >> /etc/init/$(SERVICE).conf
-	echo "# shell> groupadd kbase" >> /etc/init/$(SERVICE).conf
-	echo "# shell> useradd -r -g $(SERVICE_USER) $(SERVICE_USER)" >> /etc/init/$(SERVICE).conf
-	echo "#" >> /etc/init/$(SERVICE).conf
-	echo "start on runlevel [23]" >> /etc/init/$(SERVICE).conf 
-	echo "stop on runlevel [!23]" >> /etc/init/$(SERVICE).conf 
-	echo "pre-start exec chown -R $(SERVICE_USER) $(TARGET)/services/$(SERVICE)" >> /etc/init/$(SERVICE).conf 
-	echo "exec su kbase -c '$(TARGET)/services/$(SERVICE)/start_service'" >> /etc/init/$(SERVICE).conf 
-
-undeploy:
-	-rm -rf $(SERVICE_DIR)
-	-rm -rfv $(TARGET)/lib/Bio/KBase/$(SERVICE)
-	-rm -rfv $(TARGET)/lib/biokbase/$(SERVICE)
-	-rm -rfv $(TARGET)/lib/javascript/$(SERVICE) 
-	-rm -rfv $(TARGET)/lib/$(CLIENT_JAR)
+deploy-docs:
+	@echo "No documentation"
 
 clean:
-	$(ANT) clean
-	-rm -rf docs
-	-rm -rf bin
-	@#TODO remove lib once files are generated on the fly
+	ant clean
