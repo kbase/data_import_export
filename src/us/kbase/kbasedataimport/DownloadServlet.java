@@ -62,7 +62,7 @@ public class DownloadServlet extends HttpServlet {
 			HttpServletResponse response) {
 		response.setHeader("Access-Control-Allow-Origin", "*");
 		String allowedHeaders = request.getHeader("HTTP_ACCESS_CONTROL_REQUEST_HEADERS");
-		response.setHeader("Access-Control-Allow-Headers", allowedHeaders == null ? "authorization" : allowedHeaders);
+		response.setHeader("Access-Control-Allow-Headers", allowedHeaders);
 	}
 
 	@Override
@@ -74,7 +74,7 @@ public class DownloadServlet extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		File f = null;
 		try {
-			String token = request.getHeader("Authorization");
+			String token = request.getParameter("token");
 			String url = request.getParameter("url");
 			String ws = request.getParameter("ws");
 			String name = request.getParameter("name");
