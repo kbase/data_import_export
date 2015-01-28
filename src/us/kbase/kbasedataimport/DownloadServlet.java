@@ -1,12 +1,15 @@
 package us.kbase.kbasedataimport;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URL;
 import java.util.Arrays;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -70,6 +73,7 @@ public class DownloadServlet extends HttpServlet {
 		doPost(request, response);
 	}
 	
+	@SuppressWarnings("resource")
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		File f = null;
@@ -79,30 +83,81 @@ public class DownloadServlet extends HttpServlet {
 			String ws = request.getParameter("ws");
 			String name = request.getParameter("name");
 			String id = getNotNull(request, "id");
+			String shockZipSuffix = request.getParameter("zip");
+			String shockNeedDeletion = request.getParameter("del");
 			response.setContentType("application/octet-stream");
 			if (ws != null) {
 				if (url == null)
 					url = getWsUrl();
 				WorkspaceClient wc = createWsClient(token, url);
-				File tempDir = getTempDir();
 				String fileName = removeWeirdChars(id);
-				f = File.createTempFile("download_" + fileName, "json", tempDir);
+				f = File.createTempFile("download_" + fileName, ".json", getTempDir());
 				wc._setFileForNextRpcResponse(f);
 				UObject data = wc.getObjects(Arrays.asList(new ObjectIdentity().withRef(ws + "/" + id))).get(0).getData();
 				setupResponseHeaders(request, response);
 				if (name == null)
 					name = fileName + ".json";
-				response.setHeader( "Content-Disposition", "attachment;filename=" + name);
+				response.setHeader( "Content-Disposition", "attachment;filename=" + removeWeirdChars(name));
 				data.write(response.getOutputStream());
 			} else {
 				if (url == null)
 					url = getShockUrl();
 				BasicShockClient client = createShockClient(token, url);
-				setupResponseHeaders(request, response);
-				if (name == null)
-					name = id + ".node";
-				response.setHeader( "Content-Disposition", "attachment;filename=" + name);
-				client.getFile(new ShockNodeId(id), response.getOutputStream());
+				try {
+					setupResponseHeaders(request, response);
+					if (shockZipSuffix == null) {
+						if (name == null)
+							name = id + ".node";
+						response.setHeader( "Content-Disposition", "attachment;filename=" + name);
+						client.getFile(new ShockNodeId(id), response.getOutputStream());
+					} else {
+						shockZipSuffix = shockZipSuffix.toLowerCase();
+						f = File.createTempFile("download_" + removeWeirdChars(id), ".zip", getTempDir());
+						FileOutputStream fos = new FileOutputStream(f);
+						client.getFile(new ShockNodeId(id), fos);
+						fos.close();
+						ZipInputStream zis = new ZipInputStream(new FileInputStream(f));
+						try {
+							while (true) {
+								ZipEntry ze = zis.getNextEntry();
+								if (ze == null) {
+									// we didn't find necessary entry, throw an error
+									// zis will be closed in finally block anyway
+									throw new IllegalStateException("Can't find entry name matching " +
+											"[" + shockZipSuffix + "] suffix in zip file for shock node " + id);
+								}
+								if (ze.getName().toLowerCase().endsWith(shockZipSuffix)) {
+									if (name == null) {
+										name = ze.getName();
+										if (name.contains("/"))
+											name = name.substring(name.lastIndexOf('/') + 1);
+									}
+									response.setHeader( "Content-Disposition", "attachment;filename=" + removeWeirdChars(name));
+									OutputStream os = response.getOutputStream();
+									byte[] buffer = new byte[10000];
+									while (true) {
+										int len = zis.read(buffer);
+										if (len <= 0)
+											break;
+										os.write(buffer, 0, len);
+									}
+									os.flush();
+									buffer = null;
+									break;
+								}
+							}
+						} finally {
+							try { zis.close(); } catch (Exception ignore) {}
+						}
+					}
+				} finally {
+					if (shockNeedDeletion != null && !(shockNeedDeletion.equals("false") || shockNeedDeletion.equals("0")))
+						try {
+							client.deleteNode(new ShockNodeId(id));
+						} catch (Exception ignore) {
+							ignore.printStackTrace();
+						}
+				}
 			}
 		} catch (ServletException ex) {
 			throw ex;
