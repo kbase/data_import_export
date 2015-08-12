@@ -34,7 +34,7 @@
     <include name="jetty/jetty-all-7.0.0.jar"/>
     <include name="syslog4j/syslog4j-0.9.46.jar"/>
     <include name="jna/jna-3.4.0.jar"/>
-    <include name="kbase/shock/shock-client-0.0.7.jar"/>
+    <include name="kbase/shock/shock-client-0.0.8.jar"/>
     <include name="apache_commons/http/httpclient-4.3.1.jar"/>
     <include name="apache_commons/http/httpcore-4.3.jar"/>
     <include name="apache_commons/http/httpmime-4.3.1.jar"/>
