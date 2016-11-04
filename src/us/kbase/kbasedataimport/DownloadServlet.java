@@ -7,12 +7,16 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.io.Writer;
 import java.net.URL;
+import java.net.URLDecoder;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.zip.ZipEntry;
@@ -20,6 +24,7 @@ import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -37,6 +42,8 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
+import us.kbase.auth.AuthException;
+import us.kbase.auth.AuthService;
 import us.kbase.auth.AuthToken;
 import us.kbase.common.service.UObject;
 import us.kbase.shock.client.BasicShockClient;
@@ -47,6 +54,8 @@ import us.kbase.workspace.WorkspaceClient;
 
 public class DownloadServlet extends HttpServlet {
 	private static final long serialVersionUID = -1L;
+	
+	private static final String TOKEN_COOKIE_NAME = "kbase_session";
 	
     private static File tempDir = null;
     private static String wsUrl = null;
@@ -97,7 +106,7 @@ public class DownloadServlet extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		File f = null;
 		try {
-			String token = request.getParameter("token");
+			AuthToken token = getToken(request);
 			String url = request.getParameter("url");
 			String ws = request.getParameter("ws");
 			String name = request.getParameter("name");
@@ -217,6 +226,49 @@ public class DownloadServlet extends HttpServlet {
 		}
 	}
 	
+	private AuthToken getToken(final HttpServletRequest request)
+            throws IOException, AuthException {
+        final String at = request.getHeader("Authorization");
+        if (at != null && !at.trim().isEmpty()) {
+            return AuthService.validateToken(at);
+        }
+        if (request.getCookies() != null) {
+            for (final Cookie c: request.getCookies()) {
+                if (c.getName().equals(TOKEN_COOKIE_NAME) &&
+                        !c.getValue().isEmpty()) {
+                    return AuthService.validateToken(
+                            unmungeCookiePerShane(c.getValue()));
+                }
+            }
+        }
+        return null;
+    }
+	
+	private static String unmungeCookiePerShane(final String cookie)
+            throws AuthException {
+        final String unenc;
+        try {
+            unenc = URLDecoder.decode(cookie, StandardCharsets.UTF_8.name());
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException("This should be impossible", e);
+        }
+        final Map<String, String> contents = new HashMap<String, String>();
+        for (final String part: unenc.split("\\|")) {
+            final String[] partpart = part.split("=");
+            if (partpart.length != 2) {
+                throw new AuthException("Cannot parse token from cookie: " +
+                        "Subportion of cookie missing value");
+            }
+            contents.put(partpart[0], partpart[1]);
+        }
+        final String token = contents.get("token");
+        if (token == null) {
+            throw new AuthException("Cannot parse token from cookie: " +
+                    "No token section");
+        }
+        return token.replace("PIPESIGN", "|").replace("EQUALSSIGN", "=");
+    }
+	
 	private static String sortJsonKeys(String json) throws Exception {
 		ObjectMapper mapper = new ObjectMapper();
 		mapper.configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
@@ -278,28 +330,28 @@ public class DownloadServlet extends HttpServlet {
     	return total;
     }
 
-	public static WorkspaceClient createWsClient(String token, String wsUrl) throws Exception {
+	public static WorkspaceClient createWsClient(AuthToken token, String wsUrl) throws Exception {
 		WorkspaceClient ret;
 		if (token == null) {
 			ret = new WorkspaceClient(new URL(wsUrl));
 		} else {
-			ret = new WorkspaceClient(new URL(wsUrl), new AuthToken(token));
-			ret.setAuthAllowedForHttp(true);
+			ret = new WorkspaceClient(new URL(wsUrl), token);
+			ret.setIsInsecureHttpConnectionAllowed(true);
 		}
 		return ret;
 	}
 	
-	public static BasicShockClient createShockClient(String token, String url) throws Exception {
+	public static BasicShockClient createShockClient(AuthToken token, String url) throws Exception {
 		BasicShockClient ret;
 		if (token == null) {
 			ret = new BasicShockClient(new URL(url));
 		} else {
-			ret = new BasicShockClient(new URL(url), new AuthToken(token));
+			ret = new BasicShockClient(new URL(url), token);
 		}
 		return ret;
 	}
 
-	public static WorkspaceClient createWsClient(String token) throws Exception {
+	public static WorkspaceClient createWsClient(AuthToken token) throws Exception {
 		String wsUrl = getWsUrl();
 		return createWsClient(token, wsUrl);
 	}

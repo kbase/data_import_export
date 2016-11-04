@@ -6,13 +6,10 @@ import us.kbase.auth.AuthToken;
 import us.kbase.common.service.JsonServerMethod;
 import us.kbase.common.service.JsonServerServlet;
 import us.kbase.common.service.Tuple2;
-import us.kbase.shock.client.BasicShockClient;
-import us.kbase.shock.client.ShockNodeId;
 
 //BEGIN_HEADER
 import java.io.File;
 import java.net.URL;
-import java.util.Map;
 
 import org.ini4j.Ini;
 //END_HEADER
@@ -61,6 +58,10 @@ public class KBaseDataImportServer extends JsonServerServlet {
 			throw new IllegalStateException("There was unknown error in service initialization when checking"
 					+ "the configuration: is the ["+SERVICE_DEPLOYMENT_NAME+"] config group defined?");
 		return config;
+    }
+    
+    public static void injectConfigForTests(Map<String, String> config) {
+        KBaseDataImportServer.config = config;
     }
 
     public static File getTempDir() {
@@ -123,8 +124,8 @@ public class KBaseDataImportServer extends JsonServerServlet {
     public List<String> getNcbiGenomeNames() throws Exception {
         List<String> returnVal = null;
         //BEGIN get_ncbi_genome_names
-        config();
-        returnVal = ContigSetUploadServlet.getNcbiGenomeNames();
+        if (true)
+            throw new IllegalStateException("Method is not supported anymore");
         //END get_ncbi_genome_names
         return returnVal;
     }
@@ -139,8 +140,8 @@ public class KBaseDataImportServer extends JsonServerServlet {
     @JsonServerMethod(rpc = "KBaseDataImport.import_ncbi_genome")
     public void importNcbiGenome(ImportNcbiGenomeParams input, AuthToken authPart) throws Exception {
         //BEGIN import_ncbi_genome
-        config();
-    	ContigSetUploadServlet.importNcbiGenome(input.getGenomeName(), input.getOutGenomeWs(), input.getOutGenomeId(), authPart.toString());
+        if (true)
+            throw new IllegalStateException("Method is not supported anymore");
         //END import_ncbi_genome
     }
 
@@ -159,16 +160,8 @@ public class KBaseDataImportServer extends JsonServerServlet {
     public Tuple2<String, String> upload(String input, String output, String workspace, String objectName, Map<String,String> props, AuthToken authPart) throws Exception {
         Tuple2<String, String> returnVal = null;
         //BEGIN upload
-        System.out.println("Server call: input=" + input + ", output=" + output + ", ws=" + workspace + ", obj=" + objectName + ", props=" + props);
-        String shockNodeId = props.get("shock_node_id");
-        String ftpPath = props.get("ftp_path");
-        if (shockNodeId != null && !shockNodeId.isEmpty()) {
-    		BasicShockClient client = new BasicShockClient(new URL("https://kbase.us/services/shock-api/"), authPart);
-    		client.deleteNode(new ShockNodeId(shockNodeId));
-        } else if (ftpPath != null) {
-        	ContigSetUploadServlet.importNcbiGenomeFromFtp(ftpPath, workspace, objectName, authPart.toString());
-        }
-        returnVal = new Tuple2<String, String>().withE1("jobId1").withE2("jobId2");
+        if (true)
+            throw new IllegalStateException("Method is not supported anymore");
         //END upload
         return returnVal;
     }
