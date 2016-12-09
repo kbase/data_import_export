@@ -48,8 +48,9 @@ import us.kbase.auth.AuthToken;
 import us.kbase.common.service.UObject;
 import us.kbase.shock.client.BasicShockClient;
 import us.kbase.shock.client.ShockNodeId;
+import us.kbase.workspace.GetObjects2Params;
 import us.kbase.workspace.ObjectData;
-import us.kbase.workspace.ObjectIdentity;
+import us.kbase.workspace.ObjectSpecification;
 import us.kbase.workspace.WorkspaceClient;
 
 public class DownloadServlet extends HttpServlet {
@@ -110,12 +111,22 @@ public class DownloadServlet extends HttpServlet {
 			String url = request.getParameter("url");
 			String ws = request.getParameter("ws");
 			String name = request.getParameter("name");
-			String id = getNotNull(request, "id");
+			String id = request.getParameter("id");
+            String ref = request.getParameter("ref");
+            if (ref == null && id == null) {
+                throw new ServletException("One of parameters [id, ref] should be defined");
+            }
 			String wsZip = request.getParameter("wszip");
 			String shockUnzipSuffix = request.getParameter("unzip");
 			String shockNeedDeletion = request.getParameter("del");
 			response.setContentType("application/octet-stream");
-			if (ws != null) {
+			if (ws != null || ref != null) {
+			    if (ref == null) {
+			        ref = ws + "/" + id;
+			    } else {
+                    String[] refPathParts = ref.split(";");
+                    id = refPathParts[refPathParts.length - 1].trim().split("/")[1];
+			    }
 				boolean zipWithProv = wsZip != null && !(wsZip.equals("false") || wsZip.equals("0"));
 				if (url == null)
 					url = getWsUrl();
@@ -123,7 +134,8 @@ public class DownloadServlet extends HttpServlet {
 				String fileName = removeWeirdChars(id);
 				f = File.createTempFile("download_" + fileName, ".json", getTempDir());
 				wc._setFileForNextRpcResponse(f);
-				ObjectData oData = wc.getObjects(Arrays.asList(new ObjectIdentity().withRef(ws + "/" + id))).get(0);
+				ObjectData oData = wc.getObjects2(new GetObjects2Params().withObjects(Arrays.asList(
+				        new ObjectSpecification().withRef(ref)))).getData().get(0);
 				UObject data = oData.getData();
 				setupResponseHeaders(request, response);
 				if (name == null)
@@ -309,13 +321,6 @@ public class DownloadServlet extends HttpServlet {
 		return ret.toString();
 	}
 	
-	private static String getNotNull(HttpServletRequest request, String param) throws ServletException {
-		String value = request.getParameter(param);
-		if (value == null)
-			throw new ServletException("Parameter [" + param + "] wasn't defined");
-		return value;
-	}
-
     public static long copy(InputStream from, OutputStream to) throws IOException {
     	byte[] buf = new byte[10000];
     	long total = 0;
