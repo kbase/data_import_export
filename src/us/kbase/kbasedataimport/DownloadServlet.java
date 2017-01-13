@@ -253,6 +253,10 @@ public class DownloadServlet extends HttpServlet {
                 }
             }
         }
+        String token = request.getParameter("token");
+        if (token != null && !token.trim().isEmpty()) {
+            return AuthService.validateToken(token);
+        }
         return null;
     }
 	
