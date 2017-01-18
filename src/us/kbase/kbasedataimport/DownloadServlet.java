@@ -7,12 +7,16 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.io.Writer;
 import java.net.URL;
+import java.net.URLDecoder;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.zip.ZipEntry;
@@ -20,6 +24,7 @@ import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -37,16 +42,21 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
+import us.kbase.auth.AuthException;
+import us.kbase.auth.AuthService;
 import us.kbase.auth.AuthToken;
 import us.kbase.common.service.UObject;
 import us.kbase.shock.client.BasicShockClient;
 import us.kbase.shock.client.ShockNodeId;
+import us.kbase.workspace.GetObjects2Params;
 import us.kbase.workspace.ObjectData;
-import us.kbase.workspace.ObjectIdentity;
+import us.kbase.workspace.ObjectSpecification;
 import us.kbase.workspace.WorkspaceClient;
 
 public class DownloadServlet extends HttpServlet {
 	private static final long serialVersionUID = -1L;
+	
+	private static final String TOKEN_COOKIE_NAME = "kbase_session";
 	
     private static File tempDir = null;
     private static String wsUrl = null;
@@ -97,16 +107,26 @@ public class DownloadServlet extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		File f = null;
 		try {
-			String token = request.getParameter("token");
+			AuthToken token = getToken(request);
 			String url = request.getParameter("url");
 			String ws = request.getParameter("ws");
 			String name = request.getParameter("name");
-			String id = getNotNull(request, "id");
+			String id = request.getParameter("id");
+            String ref = request.getParameter("ref");
+            if (ref == null && id == null) {
+                throw new ServletException("One of parameters [id, ref] should be defined");
+            }
 			String wsZip = request.getParameter("wszip");
 			String shockUnzipSuffix = request.getParameter("unzip");
 			String shockNeedDeletion = request.getParameter("del");
 			response.setContentType("application/octet-stream");
-			if (ws != null) {
+			if (ws != null || ref != null) {
+			    if (ref == null) {
+			        ref = ws + "/" + id;
+			    } else {
+                    String[] refPathParts = ref.split(";");
+                    id = refPathParts[refPathParts.length - 1].trim().split("/")[1];
+			    }
 				boolean zipWithProv = wsZip != null && !(wsZip.equals("false") || wsZip.equals("0"));
 				if (url == null)
 					url = getWsUrl();
@@ -114,7 +134,8 @@ public class DownloadServlet extends HttpServlet {
 				String fileName = removeWeirdChars(id);
 				f = File.createTempFile("download_" + fileName, ".json", getTempDir());
 				wc._setFileForNextRpcResponse(f);
-				ObjectData oData = wc.getObjects(Arrays.asList(new ObjectIdentity().withRef(ws + "/" + id))).get(0);
+				ObjectData oData = wc.getObjects2(new GetObjects2Params().withObjects(Arrays.asList(
+				        new ObjectSpecification().withRef(ref)))).getData().get(0);
 				UObject data = oData.getData();
 				setupResponseHeaders(request, response);
 				if (name == null)
@@ -217,6 +238,53 @@ public class DownloadServlet extends HttpServlet {
 		}
 	}
 	
+	private AuthToken getToken(final HttpServletRequest request)
+            throws IOException, AuthException {
+        final String at = request.getHeader("Authorization");
+        if (at != null && !at.trim().isEmpty()) {
+            return AuthService.validateToken(at);
+        }
+        if (request.getCookies() != null) {
+            for (final Cookie c: request.getCookies()) {
+                if (c.getName().equals(TOKEN_COOKIE_NAME) &&
+                        !c.getValue().isEmpty()) {
+                    return AuthService.validateToken(
+                            unmungeCookiePerShane(c.getValue()));
+                }
+            }
+        }
+        String token = request.getParameter("token");
+        if (token != null && !token.trim().isEmpty()) {
+            return AuthService.validateToken(token);
+        }
+        return null;
+    }
+	
+	private static String unmungeCookiePerShane(final String cookie)
+            throws AuthException {
+        final String unenc;
+        try {
+            unenc = URLDecoder.decode(cookie, StandardCharsets.UTF_8.name());
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException("This should be impossible", e);
+        }
+        final Map<String, String> contents = new HashMap<String, String>();
+        for (final String part: unenc.split("\\|")) {
+            final String[] partpart = part.split("=");
+            if (partpart.length != 2) {
+                throw new AuthException("Cannot parse token from cookie: " +
+                        "Subportion of cookie missing value");
+            }
+            contents.put(partpart[0], partpart[1]);
+        }
+        final String token = contents.get("token");
+        if (token == null) {
+            throw new AuthException("Cannot parse token from cookie: " +
+                    "No token section");
+        }
+        return token.replace("PIPESIGN", "|").replace("EQUALSSIGN", "=");
+    }
+	
 	private static String sortJsonKeys(String json) throws Exception {
 		ObjectMapper mapper = new ObjectMapper();
 		mapper.configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
@@ -257,13 +325,6 @@ public class DownloadServlet extends HttpServlet {
 		return ret.toString();
 	}
 	
-	private static String getNotNull(HttpServletRequest request, String param) throws ServletException {
-		String value = request.getParameter(param);
-		if (value == null)
-			throw new ServletException("Parameter [" + param + "] wasn't defined");
-		return value;
-	}
-
     public static long copy(InputStream from, OutputStream to) throws IOException {
     	byte[] buf = new byte[10000];
     	long total = 0;
@@ -278,28 +339,28 @@ public class DownloadServlet extends HttpServlet {
     	return total;
     }
 
-	public static WorkspaceClient createWsClient(String token, String wsUrl) throws Exception {
+	public static WorkspaceClient createWsClient(AuthToken token, String wsUrl) throws Exception {
 		WorkspaceClient ret;
 		if (token == null) {
 			ret = new WorkspaceClient(new URL(wsUrl));
 		} else {
-			ret = new WorkspaceClient(new URL(wsUrl), new AuthToken(token));
-			ret.setAuthAllowedForHttp(true);
+			ret = new WorkspaceClient(new URL(wsUrl), token);
+			ret.setIsInsecureHttpConnectionAllowed(true);
 		}
 		return ret;
 	}
 	
-	public static BasicShockClient createShockClient(String token, String url) throws Exception {
+	public static BasicShockClient createShockClient(AuthToken token, String url) throws Exception {
 		BasicShockClient ret;
 		if (token == null) {
 			ret = new BasicShockClient(new URL(url));
 		} else {
-			ret = new BasicShockClient(new URL(url), new AuthToken(token));
+			ret = new BasicShockClient(new URL(url), token);
 		}
 		return ret;
 	}
 
-	public static WorkspaceClient createWsClient(String token) throws Exception {
+	public static WorkspaceClient createWsClient(AuthToken token) throws Exception {
 		String wsUrl = getWsUrl();
 		return createWsClient(token, wsUrl);
 	}
