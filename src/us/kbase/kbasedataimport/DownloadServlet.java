@@ -57,6 +57,7 @@ public class DownloadServlet extends HttpServlet {
 	private static final long serialVersionUID = -1L;
 	
 	private static final String TOKEN_COOKIE_NAME = "kbase_session";
+    private static final String TOKEN_COOKIE2_NAME = "kbase_session_backup";
 	
     private static File tempDir = null;
     private static String wsUrl = null;
@@ -247,6 +248,13 @@ public class DownloadServlet extends HttpServlet {
         if (request.getCookies() != null) {
             for (final Cookie c: request.getCookies()) {
                 if (c.getName().equals(TOKEN_COOKIE_NAME) &&
+                        !c.getValue().isEmpty()) {
+                    return AuthService.validateToken(
+                            unmungeCookiePerShane(c.getValue()));
+                }
+            }
+            for (final Cookie c: request.getCookies()) {
+                if (c.getName().equals(TOKEN_COOKIE2_NAME) &&
                         !c.getValue().isEmpty()) {
                     return AuthService.validateToken(
                             unmungeCookiePerShane(c.getValue()));
