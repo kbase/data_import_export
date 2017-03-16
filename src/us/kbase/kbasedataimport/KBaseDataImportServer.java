@@ -31,7 +31,7 @@ public class KBaseDataImportServer extends JsonServerServlet {
     public static final String CFG_PROP_SHOCK_URL = "shock.url";
     public static final String CFG_PROP_AUTH_SERVICE_URL = "auth-service-url";
     
-    public static final String VERSION = "0.0.2";
+    public static final String VERSION = "0.0.3";
     
     private static Throwable configError = null;
     private static Map<String, String> config = null;

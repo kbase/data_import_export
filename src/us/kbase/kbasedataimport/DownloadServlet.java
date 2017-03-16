@@ -7,12 +7,16 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.io.Writer;
 import java.net.URL;
+import java.net.URLDecoder;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.zip.ZipEntry;
@@ -242,33 +246,60 @@ public class DownloadServlet extends HttpServlet {
 	private AuthToken getToken(final HttpServletRequest request)
             throws IOException, AuthException {
         String token = request.getHeader("Authorization");
-        if (token == null || token.trim().isEmpty()) {
-            if (request.getCookies() != null) {
+        if (isValueEmpty(token) && request.getCookies() != null) {
+            for (String cookieKey : new String[] {TOKEN_COOKIE_NAME, TOKEN_COOKIE2_NAME}) {
                 for (final Cookie c: request.getCookies()) {
-                    if (c.getName().equals(TOKEN_COOKIE_NAME) &&
-                            !c.getValue().isEmpty()) {
-                        token = c.getValue(); 
+                    if (c.getName().equals(cookieKey) && !c.getValue().isEmpty()) {
+                        String cookieValue = c.getValue();
+                        if (cookieValue.contains("\\|") || cookieValue.contains("=")) {
+                            cookieValue = unmungeCookiePerShane(cookieValue);
+                        }
+                        token = cookieValue;
                     }
                 }
-                if (token == null || token.trim().isEmpty()) {
-                    for (final Cookie c: request.getCookies()) {
-                        if (c.getName().equals(TOKEN_COOKIE2_NAME) &&
-                                !c.getValue().isEmpty()) {
-                            token = c.getValue(); 
-                        }
-                    }
+                if (!isValueEmpty(token)) {
+                    break;
                 }
             }
         }
-        if (token == null || token.trim().isEmpty()) {
+        if (isValueEmpty(token)) {
             token = request.getParameter("token");
         }
-        if (token != null && !token.trim().isEmpty()) {
+        if (!isValueEmpty(token)) {
             return new AuthToken(token, "<unknown>");
         }
         return null;
     }
+
+	private static boolean isValueEmpty(String value) {
+	    return value == null || value.trim().isEmpty();
+	}
 	
+	private static String unmungeCookiePerShane(final String cookie)
+	        throws AuthException {
+	    final String unenc;
+	    try {
+	        unenc = URLDecoder.decode(cookie, StandardCharsets.UTF_8.name());
+	    } catch (UnsupportedEncodingException e) {
+	        throw new RuntimeException("This should be impossible", e);
+	    }
+	    final Map<String, String> contents = new HashMap<String, String>();
+	    for (final String part: unenc.split("\\|")) {
+	        final String[] partpart = part.split("=");
+	        if (partpart.length != 2) {
+	            throw new AuthException("Cannot parse token from cookie: " +
+	                    "Subportion of cookie missing value");
+	        }
+	        contents.put(partpart[0], partpart[1]);
+	    }
+	    final String token = contents.get("token");
+	    if (token == null) {
+	        throw new AuthException("Cannot parse token from cookie: " +
+	                "No token section");
+	    }
+	    return token.replace("PIPESIGN", "|").replace("EQUALSSIGN", "=");
+	}
+
 	private static String sortJsonKeys(String json) throws Exception {
 		ObjectMapper mapper = new ObjectMapper();
 		mapper.configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
