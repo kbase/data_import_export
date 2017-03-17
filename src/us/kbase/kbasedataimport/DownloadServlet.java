@@ -251,7 +251,9 @@ public class DownloadServlet extends HttpServlet {
                 for (final Cookie c: request.getCookies()) {
                     if (c.getName().equals(cookieKey) && !c.getValue().isEmpty()) {
                         String cookieValue = c.getValue();
-                        if (cookieValue.contains("\\|") || cookieValue.contains("=")) {
+                        String decodedValue = URLDecoder.decode(cookieValue, 
+                                StandardCharsets.UTF_8.name());
+                        if (decodedValue.contains("\\|") || decodedValue.contains("=")) {
                             cookieValue = unmungeCookiePerShane(cookieValue);
                         }
                         token = cookieValue;
