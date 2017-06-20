@@ -18,6 +18,8 @@ public class TestServer {
             tempDir.mkdir();
         Map<String, String> config = new LinkedHashMap<String, String>();
         config.put(KBaseDataImportServer.CFG_PROP_SCRATCH, tempDir.getAbsolutePath());
+        config.put(KBaseDataImportServer.CFG_PROP_AUTH_SERVICE_URL, 
+                "https://ci.kbase.us/services/auth/api/legacy/KBase/Sessions/Login");
         KBaseDataImportServer.injectConfigForTests(config);
         int port = 12345;
         Server jettyServer = new Server(port);
