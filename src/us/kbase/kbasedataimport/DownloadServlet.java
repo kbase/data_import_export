@@ -165,7 +165,7 @@ public class DownloadServlet extends HttpServlet {
 					zos.write(writeJsonAsPrettyString(superInfo).getBytes(Charset.forName("utf-8")));
 					zos.closeEntry();
 					zos.putNextEntry(new ZipEntry(fileName + ".json"));
-					sortJsonKeys(data).write(zos);
+					data.write(zos);
 					zos.closeEntry();
 					zos.close();
 				} else {
