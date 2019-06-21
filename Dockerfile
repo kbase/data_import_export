@@ -31,7 +31,7 @@ ENV KB_DEPLOYMENT_CONFIG=/kb/deployment/conf/deployment.cfg
 ENV PATH=/bin:/usr/bin:/kb/deployment/bin
 ENV JETTY_HOME=/usr/local/jetty
 
-RUN mkdir /kb/deployment/jettybase/logs
+RUN mkdir -p /kb/deployment/jettybase/logs
 
 RUN chmod -R a+rwx /kb/deployment/conf /kb/deployment/jettybase/
 ENTRYPOINT [ "/kb/deployment/bin/dockerize" ]
