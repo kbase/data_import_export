@@ -4,7 +4,10 @@ RUN cd / && git clone https://github.com/kbase/jars
 
 COPY . /tmp/data_import_export
 
-RUN cd /tmp/data_import_export && \
+ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
+
+RUN cd /tmp && ln -s /jars && \
+  cd /tmp/data_import_export && \
   ant war
 
 #ADD . /src
@@ -18,10 +21,9 @@ ARG BUILD_DATE
 ARG VCS_REF
 ARG BRANCH=develop
 
-COPY --from=build /src/deployment/ /kb/deployment/
-COPY --from=build /src/jettybase/ /kb/deployment/jettybase/
-COPY --from=build /src/dist/ /src/dist/
-COPY --from=build /jars /jars
+COPY deployment/ /kb/deployment/
+COPY jettybase/ /kb/deployment/jettybase/
+COPY --from=build /tmp/data_import_export/dist/KBaseDataImport.war /kb/deployment/jettybase/webapps/ROOT.war
 
 # The BUILD_DATE value seem to bust the docker cache when the timestamp changes, move to
 # the end
