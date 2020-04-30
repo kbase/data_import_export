@@ -171,8 +171,8 @@ public class DownloadServlet extends HttpServlet {
 					data.write(response.getOutputStream());
 				}
 			} else {
-				if (url == null)
-					url = getShockUrl();
+
+				url = getShockUrl();
 				BasicShockClient client = createShockClient(token, url);
 				try {
 					setupResponseHeaders(request, response);
