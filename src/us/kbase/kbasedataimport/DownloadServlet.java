@@ -133,8 +133,7 @@ public class DownloadServlet extends HttpServlet {
                     id = refPathParts[refPathParts.length - 1].trim().split("/")[1];
 			    }
 				boolean zipWithProv = wsZip != null && !(wsZip.equals("false") || wsZip.equals("0"));
-				if (url == null)
-					url = getWsUrl();
+				url = getWsUrl();
 				WorkspaceClient wc = createWsClient(token, url);
 				String fileName = removeWeirdChars(id);
 				f = File.createTempFile("download_" + fileName, ".json", getTempDir());
