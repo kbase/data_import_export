@@ -2,6 +2,8 @@ FROM kbase/kb_jre:latest as build
 RUN apt-get -y update && apt-get -y install ant git openjdk-8-jdk make
 RUN cd / && git clone https://github.com/kbase/jars
 
+COPY . /tmp/data_import_export
+
 RUN cd /tmp/data_import_export && \
   ant compile && \
   ant buildwar
