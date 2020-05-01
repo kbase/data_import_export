@@ -22,7 +22,7 @@ ARG VCS_REF
 ARG BRANCH=develop
 
 COPY deployment/ /kb/deployment/
-COPY jettybase/ /kb/deployment/jettybase/
+COPY --from=build /tmp/data_import_export/jettybase/ /kb/deployment/jettybase/
 COPY --from=build /tmp/data_import_export/dist/KBaseDataImport.war /kb/deployment/jettybase/webapps/root.war
 
 # The BUILD_DATE value seem to bust the docker cache when the timestamp changes, move to
