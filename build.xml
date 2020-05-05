@@ -31,10 +31,11 @@
     <include name="jetty/jetty-all-7.0.0.jar"/>
     <include name="syslog4j/syslog4j-0.9.46.jar"/>
     <include name="jna/jna-3.4.0.jar"/>
-    <include name="kbase/shock/shock-client-0.0.15.jar"/>
-    <include name="apache_commons/http/httpclient-4.3.1.jar"/>
-    <include name="apache_commons/http/httpcore-4.3.jar"/>
-    <include name="apache_commons/http/httpmime-4.3.1.jar"/>
+    <include name="kbase/shock/shock-client-0.1.0.jar"/>
+    <include name="apache_commons/http/httpclient-4.5.2.jar"/>
+    <include name="apache_commons/http/httpcore-4.4.5.jar"/>
+    <include name="apache_commons/http/httpmime-4.5.8.jar"/>
+    <include name="apache_commons/commons-lang3-3.1.jar"/>
     <include name="apache_commons/commons-logging-1.1.1.jar"/>
     <include name="apache_commons/commons-net-3.3.jar"/>
     <include name="joda/joda-time-2.2.jar"/>
@@ -52,6 +53,9 @@
     <mkdir dir="${classes}"/>
     <mkdir dir="${dist}"/>
   </target>
+
+  <target name="build" depends="compile,buildwar"
+    description="build everything"/>
 
   <target name="compile" depends="init" description="compile the source">
     <!-- Compile class files-->
@@ -80,6 +84,24 @@
       <lib dir="${war.dir}/lib/"/>
     </war>
     <delete dir="${war.dir}/lib"/>
+  </target>
+
+  <target name="buildwar" depends="compile" description="build the WAR file">
+    <!-- make the war file for the server-->
+    <mkdir dir="${war.dir}/lib"/>
+    <copy todir="${war.dir}/lib/" flatten="true">
+      <fileset refid="lib"/>
+      <resources>
+        <file file="${dist}/${jar.file}"/>
+      </resources>
+    </copy>
+    <war destfile="${dist}/${war.file}" webxml="${war.dir}/web.xml">
+      <lib dir="${war.dir}/lib/"/>
+    </war>
+    <!-- Remove uncompressed class files and libs-->
+    <delete dir="${war.dir}/lib"/>
+    <!-- copy war to jettybase -->
+    <copy tofile="./jettybase/webapps/ROOT.war" file="${dist}/${war.file}" />
   </target>
 
   <target name="clean" description="clean up" >
